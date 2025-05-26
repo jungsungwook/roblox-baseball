@@ -1,0 +1,27 @@
+{
+  "name": "roblox_baseball",
+  "tree": {
+    "$className": "DataModel",
+
+    "ServerScriptService": {
+        "$path": "src/server"
+    },
+
+    "ReplicatedFirst": {
+        "$path": "src/first"
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client/player"
+        }
+      },
+      "StarterCharacterScripts": {
+        "Client": {
+          "$path": "src/client/character"
+        }
+      }
+    }
+  }
+}
