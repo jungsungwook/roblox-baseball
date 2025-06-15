@@ -15,6 +15,7 @@ local lastDistBindable = ReplicatedStorage:WaitForChild("Bind"):WaitForChild("La
 local playerAnimationConnections = {}
 -- 글로벌 변수로 등록
 _G.playerAnimationConnections = playerAnimationConnections
+_G.lastDistance = lastDistance -- 거리 데이터도 글로벌로 공유
 
 lastDistBindable.Event:Connect(function(player, breaked)
     
@@ -43,9 +44,22 @@ RemoteEvent.OnServerEvent:Connect(function(player, launchDirection, startPositio
         baseballBat:Destroy()
     end
     
-    local powerStat = PlayerDataModule.GetPlayerData(player).Power
-    -- 힘 스탯에 따른 최대 거리 계산 (예: 1 힘 = 0.1 스터드)
-    local maxDistance = powerStat * 0.1 * arrowX
+    local finalPower = PlayerDataModule.GetFinalPower(player)
+    local playerData = PlayerDataModule.GetPlayerData(player)
+    print(string.format("[파워 계산] %s - 기본 파워: %d, 파워 배수: %d%%, 최종 파워: %.1f", 
+        player.Name, playerData.Power or 1, playerData.PowerMultiplier or 0, finalPower))
+    
+    -- arrowX 디버깅
+    print(string.format("[arrowX 디버깅] %s - 받은 arrowX 값: %.3f", player.Name, arrowX))
+    
+    -- arrowX가 0이면 최소값 보장 (완전히 실패하지 않도록)
+    local effectiveArrowX = math.max(arrowX, 0.1) -- 최소 10% 보장
+    
+    -- 최종 파워에 따른 최대 거리 계산 (예: 1 파워 = 0.1 스터드)
+    local maxDistance = finalPower * 0.1 * effectiveArrowX
+    print(string.format("[거리 계산] %s - 최종 거리: %.2f 스터드 (파워: %.1f × 0.1 × arrowX: %.3f)", 
+        player.Name, maxDistance, finalPower, effectiveArrowX))
+    
     lastDistance[player] = maxDistance
     -- 애니메이션 시간 계산 
     local weight = 100
@@ -152,4 +166,10 @@ RemoteEvent2.OnServerEvent:Connect(function(player)
     if baseballBat then
         baseballBat:Destroy()
     end
+    
+    -- 자동 타임아웃 시 보상 없이 종료
+    print(string.format("[자동 타임아웃] %s - 보상 없이 게임 종료", player.Name))
+    
+    -- 거리 데이터 초기화
+    lastDistance[player] = nil
 end)
