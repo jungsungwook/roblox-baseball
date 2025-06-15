@@ -344,7 +344,16 @@ function CustomLeaderboardModule.LoadGlobalLeaderboard()
             return {}
         end
         
-        CustomLeaderboardModule.TopPlayers = data.topPlayers or {}
+        -- DataStore에서 불러온 데이터의 distance 필드를 숫자로 변환
+        local loadedPlayers = data.topPlayers or {}
+        CustomLeaderboardModule.TopPlayers = {}
+        for _, playerData in ipairs(loadedPlayers) do
+            table.insert(CustomLeaderboardModule.TopPlayers, {
+                userId = playerData.userId,
+                name = playerData.name,
+                distance = tonumber(playerData.distance) or 0
+            })
+        end
         lastResetTime = data.lastResetTime or currentTime
         
         print(string.format("[커스텀 리더보드] 글로벌 리더보드 로드 완료 - %d명", #CustomLeaderboardModule.TopPlayers))
@@ -450,8 +459,12 @@ function CustomLeaderboardModule.UpdatePlayerInGlobalLeaderboard(userId, playerN
     end
     
     -- 기존 기록이 있고 새 기록이 더 낮으면 업데이트하지 않음
-    if existingIndex and CustomLeaderboardModule.TopPlayers[existingIndex].distance >= distance then
-        return false
+    if existingIndex then
+        local existingDistance = tonumber(CustomLeaderboardModule.TopPlayers[existingIndex].distance) or 0
+        local newDistance = tonumber(distance) or 0
+        if existingDistance >= newDistance then
+            return false
+        end
     end
     
     -- 기존 기록 제거 (있다면)
@@ -459,16 +472,18 @@ function CustomLeaderboardModule.UpdatePlayerInGlobalLeaderboard(userId, playerN
         table.remove(CustomLeaderboardModule.TopPlayers, existingIndex)
     end
     
-    -- 새 기록 추가
+    -- 새 기록 추가 (distance를 숫자로 변환하여 저장)
     table.insert(CustomLeaderboardModule.TopPlayers, {
         userId = userId,
         name = playerName,
-        distance = distance
+        distance = tonumber(distance) or 0
     })
     
     -- 거리순으로 정렬 (내림차순)
     table.sort(CustomLeaderboardModule.TopPlayers, function(a, b)
-        return a.distance > b.distance
+        local distanceA = tonumber(a.distance) or 0
+        local distanceB = tonumber(b.distance) or 0
+        return distanceA > distanceB
     end)
     
     -- TOP10만 유지
