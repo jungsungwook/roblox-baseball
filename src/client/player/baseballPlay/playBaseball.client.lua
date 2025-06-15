@@ -4,6 +4,7 @@ local bindableEvent = ReplicatedStorage:WaitForChild("Bind"):WaitForChild("Stand
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local SafeTeleport = require(script.Parent.SafeTeleport)
 local StandAtBatEvent = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("BaseBallEnimEvent")
 local Pp
 local target_arrow
@@ -18,8 +19,23 @@ local StartBaseBallEvent = ReplicatedStorage:WaitForChild("Remote"):WaitForChild
 local EndBaseBallEvent = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("EndBaseBallEvent")
 local BreakBaseBallEvent = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("BreakBaseBallEvent")
 local TransitionEvent = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("TransitionRemoteEvent")
+local RequestGameResultEvent = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("RequestGameResultEvent")
 local TeleportService = game:GetService("TeleportService")
 local gameEnded = false -- 게임 종료 여부를 전역으로 추적
+local resultRequested = false -- 게임 결과 요청 플래그
+
+-- 게임 결과 요청 함수 (중복 방지)
+local function requestGameResult()
+    if not resultRequested then
+        resultRequested = true
+        print("[클라이언트] 게임 결과 요청 중...")
+        RequestGameResultEvent:FireServer()
+    else
+        print("[클라이언트] 게임 결과 이미 요청됨 - 중복 요청 방지")
+    end
+end
+
+
 
 local function findProximityPrompt(parent)
     for _, child in ipairs(parent:GetChildren()) do
@@ -383,11 +399,23 @@ local function createCheckpoints(startPosition, launchDirection, maxDistance)
             marker.CanCollide = false
             marker.Parent = workspace
 
-            local decal = Instance.new("Decal")
-            decal.Texture = "rbxassetid://106213091335281" -- 체크포인트 이미지
-            decal.Face = Enum.NormalId.Left
-            decal.Transparency = 0.5
-            decal.Parent = marker
+            -- DECAL 대신 SurfaceGui와 TextLabel 사용
+            local surfaceGui = Instance.new("SurfaceGui")
+            surfaceGui.Face = Enum.NormalId.Left
+            surfaceGui.Parent = marker
+            
+            -- 텍스트 라벨 생성
+            local textLabel = Instance.new("TextLabel")
+            textLabel.Size = UDim2.new(1, 0, 1, 0)
+            textLabel.Position = UDim2.new(0, 0, 0, 0)
+            textLabel.BackgroundTransparency = 1
+            textLabel.Text = string.format("%dM", checkpoint) -- 거리를 미터로 표시
+            textLabel.TextColor3 = Color3.new(1, 1, 1) -- 흰색 텍스트
+            textLabel.TextScaled = true
+            textLabel.Font = Enum.Font.GothamBold
+            textLabel.TextStrokeTransparency = 0.5 -- 텍스트 외곽선 추가 (가독성 향상)
+            textLabel.TextStrokeColor3 = Color3.new(0, 0, 0) -- 검은색 외곽선
+            textLabel.Parent = surfaceGui
 
             placedCheckpoints[checkpoint] = true
         end
@@ -412,29 +440,8 @@ local function launchBall(launchDirection, startPosition, maxDistance, animation
     local guiText = guiClone:WaitForChild("Frame"):WaitForChild("Frame"):WaitForChild("TextLabel")
     local leaveButton = guiClone:WaitForChild("LeaveFrame"):WaitForChild("TextButton")
     
-    -- 스폰 위치 안전하게 가져오기
-    local spawnPos
-    if Pp and Pp.Parent and Pp.Parent:FindFirstChild("StandABat_Pos") then
-        spawnPos = Pp.Parent:FindFirstChild("StandABat_Pos")
-    else
-        -- 기본 스폰 위치 찾기 (ProximityPrompt 찾기)
-        local proximityPrompt = findProximityPrompt(workspace)
-        if proximityPrompt and proximityPrompt.Parent and proximityPrompt.Parent:FindFirstChild("StandABat_Pos") then
-            spawnPos = proximityPrompt.Parent:FindFirstChild("StandABat_Pos")
-        else
-            -- 기본 스폰 위치를 찾을 수 없는 경우 기본 스폰 위치 사용
-            spawnPos = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("StandABat_Pos")
-            if not spawnPos then
-                -- 최후의 수단으로 원점 사용
-                spawnPos = Instance.new("Part")
-                spawnPos.CFrame = CFrame.new(0, 10, 0)
-                spawnPos.Anchored = true
-                spawnPos.CanCollide = true
-                spawnPos.Parent = workspace
-                spawnPos.Name = "EmergencySpawnLocation"
-            end
-        end
-    end
+    -- 안전한 스폰 위치 찾기
+    local spawnPos = SafeTeleport.findSafeSpawnPosition(Pp)
 
     -- 시작 시간 저장
     local startTime = tick()
@@ -677,16 +684,17 @@ local function launchBall(launchDirection, startPosition, maxDistance, animation
             -- 텔레포트 과정 시작
             wait(0.5)
             
-            -- 1단계: 먼저 캐릭터를 원점 근처로 이동
-            character:SetPrimaryPartCFrame(CFrame.new(0, 10, 0))
-            wait(0.5)
-            
-            -- 2단계: 텔레포트 전 추가 대기 시간
-            wait(1.5)
-            
-            -- 3단계: 최종 목적지로 이동
-            character:SetPrimaryPartCFrame(spawnPos.CFrame)
-            wait(0.3)
+            -- 안전한 텔레포트 실행
+            SafeTeleport.safeTeleport(character, spawnPos.CFrame, function(success)
+                if success then
+                    print("[텔레포트] 스폰 위치로 안전하게 이동 완료")
+                    -- 추가 안전 조치
+                    SafeTeleport.forceEnableControls()
+                else
+                    warn("[텔레포트] 스폰 위치 이동 실패")
+                end
+            end)
+            wait(1.0) -- 텔레포트 완료 대기
             
             EndBaseBallEvent:FireServer()
             
@@ -704,6 +712,13 @@ local function launchBall(launchDirection, startPosition, maxDistance, animation
                 guiClone:Destroy()
             end
             
+            -- 배트 제거 (정상 게임 완료 시)
+            local bat = character:FindFirstChild("BaseballBat")
+            if bat then
+                bat:Destroy()
+                print("[게임 완료] 배트가 제거되었습니다.")
+            end
+            
             resetCamera()
             UserControl(true)
             
@@ -714,10 +729,14 @@ local function launchBall(launchDirection, startPosition, maxDistance, animation
             
             character:WaitForChild("HumanoidRootPart").Anchored = false
             
-            -- 로딩 화면 제거
-            showLoadingScreen(false)
-            
-            characterSync:Disconnect()
+                    -- 로딩 화면 제거
+        showLoadingScreen(false)
+        
+        -- 로딩 화면이 완전히 사라진 후 게임 결과 요청
+        wait(0.5)
+        requestGameResult()
+        
+        characterSync:Disconnect()
         else 
             -- 게임 진행 중 (공이 날아가는 중)
             if ballClone and character and character.PrimaryPart and not gameEnded then
@@ -787,6 +806,13 @@ local function launchBall(launchDirection, startPosition, maxDistance, animation
         -- 체크포인트 패널 제거
         removeCheckpoints()
 
+        -- 배트 제거 (나가기 버튼 클릭 시)
+        local bat = character:FindFirstChild("BaseballBat")
+        if bat then
+            bat:Destroy()
+            print("[나가기] 배트가 제거되었습니다.")
+        end
+
         -- 캐릭터 투명도 복원
         setNoCollision(character, false)
         for _, part in pairs(character:GetDescendants()) do
@@ -806,44 +832,22 @@ local function launchBall(launchDirection, startPosition, maxDistance, animation
             Pp.Enabled = true
         end
         
-        -- 안전한 스폰 위치 찾기
-        local spawnPos
-        if Pp and Pp.Parent and Pp.Parent:FindFirstChild("StandABat_Pos") then
-            spawnPos = Pp.Parent:FindFirstChild("StandABat_Pos")
-        else
-            local proximityPrompt = findProximityPrompt(workspace)
-            if proximityPrompt and proximityPrompt.Parent and proximityPrompt.Parent:FindFirstChild("StandABat_Pos") then
-                spawnPos = proximityPrompt.Parent:FindFirstChild("StandABat_Pos")
-            else
-                spawnPos = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("StandABat_Pos")
-                if not spawnPos then
-                    spawnPos = Instance.new("Part")
-                    spawnPos.CFrame = CFrame.new(0, 10, 0)
-                    spawnPos.Anchored = true
-                    spawnPos.CanCollide = true
-                    spawnPos.Parent = workspace
-                    spawnPos.Name = "EmergencySpawnLocation"
-                end
-            end
-        end
-        
-        -- 단계적 텔레포트 실행
-        -- 1단계: 원점으로 이동
-        character:SetPrimaryPartCFrame(CFrame.new(0, 10, 0))
-        wait(0.5)
-        
-        -- 2단계: 추가 대기 시간
-        wait(1.5)
-        
-        -- 3단계: 최종 목적지로 이동
-        character:SetPrimaryPartCFrame(spawnPos.CFrame)
-        wait(0.3)
-        
-        -- 플레이어의 위치 고정 해제
-        character:WaitForChild("HumanoidRootPart").Anchored = false
+        -- 안전한 스폰 위치 찾기 및 텔레포트
+        local spawnPos = SafeTeleport.findSafeSpawnPosition(Pp)
+                 SafeTeleport.safeTeleport(character, spawnPos.CFrame, function(success)
+             if success then
+                 print("[텔레포트] 나가기 - 스폰 위치로 안전하게 이동 완료 (보상 없음)")
+                 SafeTeleport.forceEnableControls()
+             else
+                 warn("[텔레포트] 나가기 - 스폰 위치 이동 실패")
+             end
+         end)
+        wait(1.0) -- 텔레포트 완료 대기
         
         -- 로딩 화면 제거
         showLoadingScreen(false)
+        
+        print("[나가기] 게임을 중단했습니다. 보상이 지급되지 않습니다.")
     end)
 end
 
@@ -853,6 +857,10 @@ local function hit(arrowX)
     local anim = Instance.new("Animation")
     anim.AnimationId = "rbxassetid://133858936023889"
     local dance = character:WaitForChild("Humanoid"):LoadAnimation(anim)
+    
+    -- arrowX 값을 로컬 변수로 저장하여 스코프 문제 방지
+    local savedArrowX = arrowX
+    print(string.format("[hit 함수] 받은 arrowX: %.3f", savedArrowX))
     
     local hitMarkerConnection
     local SwingEndMarkerConnection
@@ -907,11 +915,15 @@ local function hit(arrowX)
 
         -- 시작 위치 저장
         local startPosition = ballClone.Position
+        
+        -- arrowX 디버깅
+        local adjustedArrowX = 1 - savedArrowX
+        print(string.format("[클라이언트 arrowX] 원본: %.3f, 조정된 값: %.3f", savedArrowX, adjustedArrowX))
 
         StartBaseBallEvent:FireServer(
             launchDirection,
             startPosition,
-            1-arrowX
+            adjustedArrowX
         )
     end)
 
@@ -1005,6 +1017,13 @@ local function moveArrow(arrow)
                 local currentPos = character.PrimaryPart.Position
                 local safePosition = Vector3.new(currentPos.X, math.max(currentPos.Y, 3), currentPos.Z)
                 character:SetPrimaryPartCFrame(CFrame.new(safePosition))
+                
+                -- 배트 제거 (자동 종료 시)
+                local bat = character:FindFirstChild("BaseballBat")
+                if bat then
+                    bat:Destroy()
+                    print("[자동 종료] 배트가 제거되었습니다.")
+                end
             end
             
             -- 로딩 화면 표시
@@ -1014,6 +1033,18 @@ local function moveArrow(arrow)
             
             -- 체크포인트 패널 제거
             removeCheckpoints()
+            
+            -- 안전한 스폰 위치 찾기 및 텔레포트
+            local spawnPos = SafeTeleport.findSafeSpawnPosition(Pp)
+                         SafeTeleport.safeTeleport(character, spawnPos.CFrame, function(success)
+                 if success then
+                     print("[텔레포트] 자동 종료 - 스폰 위치로 안전하게 이동 완료")
+                     SafeTeleport.forceEnableControls()
+                 else
+                     warn("[텔레포트] 자동 종료 - 스폰 위치 이동 실패")
+                 end
+             end)
+            wait(1.0) -- 텔레포트 완료 대기
             
             resetCamera()
             UserControl(true)
@@ -1026,12 +1057,14 @@ local function moveArrow(arrow)
             
             showOtherPlayers()
 
-            local RetireBaseBallEvent = ReplicatedStorage:WaitForChild("Remote"):WaitForChild("RetireBaseBallEvent")
-            RetireBaseBallEvent:FireServer()
+            -- 캐릭터 고정 해제
+            character:WaitForChild("HumanoidRootPart").Anchored = false
             
             -- 약간의 대기 후 로딩 화면 제거
-            wait(1)
+            wait(0.5)
             showLoadingScreen(false)
+            
+            print("[자동 종료] 시간이 초과되었습니다. 보상이 지급되지 않습니다.")
         end
     end)
 end
@@ -1112,6 +1145,7 @@ end)
 bindableEvent.Event:Connect(function(bowler, ProximityPrompt)
     -- 게임 종료 플래그 초기화
     gameEnded = false
+    resultRequested = false -- 게임 결과 요청 플래그 초기화
     
     -- 이전 게임의 공이 남아있는지 확인하고 제거
     local existingBall = workspace:FindFirstChild("HitBaseball")
