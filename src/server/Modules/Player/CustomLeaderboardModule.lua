@@ -69,7 +69,7 @@ local function createScreenLeaderboard(screen)
     surfaceGuiFront.Name = "LeaderboardGuiFront"
     surfaceGuiFront.Face = Enum.NormalId.Front
     surfaceGuiFront.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-    surfaceGuiFront.PixelsPerStud = 10 -- 500 → 100으로 다시 낮춤
+    surfaceGuiFront.PixelsPerStud = 10
     surfaceGuiFront.Parent = screen
     
     -- 뒷면 SurfaceGui 생성
@@ -77,7 +77,7 @@ local function createScreenLeaderboard(screen)
     surfaceGuiBack.Name = "LeaderboardGuiBack"
     surfaceGuiBack.Face = Enum.NormalId.Back
     surfaceGuiBack.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-    surfaceGuiBack.PixelsPerStud = 10 -- 500 → 100으로 다시 낮춤
+    surfaceGuiBack.PixelsPerStud = 10
     surfaceGuiBack.Parent = screen
     
     -- 앞면과 뒷면에 동일한 UI 생성
@@ -99,7 +99,7 @@ local function createScreenLeaderboard(screen)
         titleLabel.BorderSizePixel = 0
         titleLabel.Text = "🏆 TOP 3 최장 거리 🏆"
         titleLabel.TextColor3 = Color3.new(1, 1, 1)
-        titleLabel.TextSize = 500 -- 240 → 500으로 더욱 극대화
+        titleLabel.TextSize = 500
         titleLabel.Font = Enum.Font.GothamBold
         titleLabel.Parent = backgroundFrame
         
@@ -112,7 +112,7 @@ local function createScreenLeaderboard(screen)
         updateLabel.BorderSizePixel = 0
         updateLabel.Text = "다음 갱신: 5:00"
         updateLabel.TextColor3 = Color3.new(0.9, 0.9, 0.9)
-        updateLabel.TextSize = 350 -- 160 → 350으로 더욱 극대화
+        updateLabel.TextSize = 350
         updateLabel.Font = Enum.Font.Gotham
         updateLabel.Parent = backgroundFrame
         
@@ -174,7 +174,7 @@ local function createPlayerCard(rank, playerData, container)
     rankLabel.BackgroundTransparency = 1
     rankLabel.Text = rank == 1 and "🥇" or (rank == 2 and "🥈" or "🥉")
     rankLabel.TextColor3 = Color3.new(0, 0, 0)
-    rankLabel.TextSize = rank == 1 and 600 or 450 -- 320/240 → 600/450으로 더욱 극대화
+    rankLabel.TextSize = rank == 1 and 600 or 450
     rankLabel.Font = Enum.Font.GothamBold
     rankLabel.Parent = cardFrame
     
@@ -214,7 +214,7 @@ local function createPlayerCard(rank, playerData, container)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = playerData.name
     nameLabel.TextColor3 = Color3.new(0, 0, 0)
-    nameLabel.TextSize = rank == 1 and 400 or 300 -- 180/140 → 400/300으로 더욱 극대화
+    nameLabel.TextSize = rank == 1 and 400 or 300 
     nameLabel.Font = Enum.Font.GothamBold
     nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
     nameLabel.Parent = cardFrame
@@ -227,7 +227,7 @@ local function createPlayerCard(rank, playerData, container)
     distanceLabel.BackgroundTransparency = 1
     distanceLabel.Text = string.format("%.0f 스터드", playerData.distance)
     distanceLabel.TextColor3 = Color3.new(0, 0, 0)
-    distanceLabel.TextSize = rank == 1 and 450 or 350 -- 200/160 → 450/350으로 더욱 극대화
+    distanceLabel.TextSize = rank == 1 and 450 or 350
     distanceLabel.Font = Enum.Font.GothamBold
     distanceLabel.Parent = cardFrame
 end
@@ -282,7 +282,7 @@ local function updateScreenLeaderboards()
                     noDataLabel.BackgroundTransparency = 1
                     noDataLabel.Text = "아직 기록이 없습니다."
                     noDataLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-                    noDataLabel.TextSize = 500 -- 240 → 500으로 더욱 극대화
+                    noDataLabel.TextSize = 500
                     noDataLabel.Font = Enum.Font.GothamBold
                     noDataLabel.Parent = container
                 else
