@@ -5,7 +5,13 @@ local PowerStatFrame = MainScreenGui:WaitForChild("Frame"):WaitForChild("PowerSt
 
 local MainGuiEvent = game.ReplicatedStorage:WaitForChild("Remote"):WaitForChild("MainGuiRemoteEvent")
 
-MainGuiEvent.OnClientEvent:Connect(function(money, power)
+MainGuiEvent.OnClientEvent:Connect(function(money, power, trainingMultiplier)
     MoneyFrame:WaitForChild("Frame"):WaitForChild("TextLabel").Text = money
     PowerStatFrame:WaitForChild("Frame"):WaitForChild("TextLabel").Text = power
+    
+    -- TrainingMultiplier UI가 있다면 업데이트 (옵셔널)
+    local trainingFrame = MainScreenGui:FindFirstChild("Frame") and MainScreenGui.Frame:FindFirstChild("TrainingMultiplierFrame")
+    if trainingFrame then
+        trainingFrame:WaitForChild("Frame"):WaitForChild("TextLabel").Text = string.format("%.1fx", trainingMultiplier)
+    end
 end)
