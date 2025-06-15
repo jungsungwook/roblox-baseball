@@ -279,12 +279,26 @@ RunService.Heartbeat:Connect(function(deltaTime)
         if trainingData.powerIncreaseTimer >= 5 then
             trainingData.powerIncreaseTimer = 0
             
-            -- 파워 스탯 증가
+            -- 파워 스탯 증가 (TrainingMultiplier 적용)
             local playerData = PlayerDataModule.GetPlayerData(player)
             if playerData then
-                playerData.Power = playerData.Power + 1
+                local basePowerIncrease = 1
+                local trainingMultiplier = playerData.TrainingMultiplier or 1
+                local actualIncrease = math.floor(basePowerIncrease * trainingMultiplier)
+                
+                -- 최소 1은 보장
+                actualIncrease = math.max(actualIncrease, 1)
+                
+                playerData.Power = playerData.Power + actualIncrease
                 PlayerDataModule.SetPlayerData(player, playerData)
-                print(player.Name .. "의 파워가 1 증가했습니다! 현재 파워: " .. playerData.Power)
+                
+                if trainingMultiplier > 1 then
+                    print(string.format("%s의 파워가 %d 증가했습니다! (기본: %d × 훈련 효율: %.1fx = %d) 현재 파워: %d", 
+                        player.Name, actualIncrease, basePowerIncrease, trainingMultiplier, actualIncrease, playerData.Power))
+                else
+                    print(string.format("%s의 파워가 %d 증가했습니다! 현재 파워: %d", 
+                        player.Name, actualIncrease, playerData.Power))
+                end
             end
         end
         
