@@ -21,9 +21,20 @@ Players.PlayerAdded:Connect(function(player)
         if message == "!power" then
             local data = PlayerDataModule.GetPlayerData(player)
             if data then
-                data.Power = data.Power + 10
+                -- 훈련 가중치 적용 (기본 10 + 가중치 적용)
+                local basePowerGain = 10
+                local actualPowerGain = basePowerGain * data.TrainingMultiplier
+                data.Power = data.Power + actualPowerGain
                 PlayerDataModule.SetPlayerData(player, data)
-                print(player.Name .. "의 힘 스탯이 10 증가했습니다. 현재 힘 스탯:", data.Power)
+                print(player.Name .. "의 훈련 완료! 힘 스탯이 " .. actualPowerGain .. " 증가했습니다. (가중치: " .. data.TrainingMultiplier .. "x) 현재 힘 스탯:", data.Power)
+            end
+        elseif message == "!money" then
+            -- 테스트용 돈 지급 명령어
+            local data = PlayerDataModule.GetPlayerData(player)
+            if data then
+                data.Money = data.Money + 100
+                PlayerDataModule.SetPlayerData(player, data)
+                print(player.Name .. "의 돈이 100 증가했습니다. 현재 돈:", data.Money)
             end
         end
     end)
