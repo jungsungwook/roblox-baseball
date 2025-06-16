@@ -283,21 +283,21 @@ RunService.Heartbeat:Connect(function(deltaTime)
             local playerData = PlayerDataModule.GetPlayerData(player)
             if playerData then
                 local basePowerIncrease = 1
-                local trainingMultiplier = playerData.TrainingMultiplier or 1
+                local trainingMultiplier = tonumber(playerData.TrainingMultiplier) or 1
                 local actualIncrease = math.floor(basePowerIncrease * trainingMultiplier)
                 
                 -- 최소 1은 보장
                 actualIncrease = math.max(actualIncrease, 1)
                 
-                playerData.Power = playerData.Power + actualIncrease
+                playerData.Power = (tonumber(playerData.Power) or 0) + actualIncrease
                 PlayerDataModule.SetPlayerData(player, playerData)
                 
                 if trainingMultiplier > 1 then
                     print(string.format("%s의 파워가 %d 증가했습니다! (기본: %d × 훈련 효율: %.1fx = %d) 현재 파워: %d", 
-                        player.Name, actualIncrease, basePowerIncrease, trainingMultiplier, actualIncrease, playerData.Power))
+                        player.Name, actualIncrease, basePowerIncrease, trainingMultiplier, actualIncrease, tonumber(playerData.Power) or 0))
                 else
                     print(string.format("%s의 파워가 %d 증가했습니다! 현재 파워: %d", 
-                        player.Name, actualIncrease, playerData.Power))
+                        player.Name, actualIncrease, tonumber(playerData.Power) or 0))
                 end
             end
         end
